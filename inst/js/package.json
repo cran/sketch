@@ -1,0 +1,53 @@
+{
+  "name": "r-core",
+  "version": "1.0.0",
+  "description": "A collection of functions providing R-like functionalities",
+  "main": "R",
+  "scripts": {
+    "build": "yarn build-dist && yarn build-base && yarn build-core",
+    "build-core": "yarn webpack --config webpack.config.js",
+    "build-base": "yarn webpack --config ./script/webpack.build_base.config.js",
+    "build-dist": "yarn webpack --config ./script/webpack.build_dist.config.js",
+
+    "build-dev": "yarn build-dist-dev && yarn build-base-dev && yarn build-core-dev",
+    "build-core-dev": "yarn build-core --mode='development'",
+    "build-base-dev": "yarn build-base --mode='development'",
+    "build-dist-dev": "yarn build-dist --mode='development'",
+    
+    "clean-test":    "yarn clean && yarn build && yarn test-modules && yarn test-bundle",
+    "test-modules":  "yarn jest --config ./script/jest-modules.config.js ./tests/test-files/",
+    "test-bundle":   "yarn jest --config ./script/jest-bundle.config.js ./tests/test-files/",
+    
+    "clean-test-coverage": "yarn clean && yarn test-coverage-notes && yarn build-dev && yarn test-modules --coverage=true && yarn test-report",
+    "test-coverage-notes": "echo 'Note that test-coverage is generated based on the development built (for the line tracking to work properly). \nYou should rerun `yarn build` to get back the binary built after generating the report.'",
+    "test-report":         "open ./tests/test-coverage/index.html",
+
+    "clean": "rm -r ./bin/dist/ && mkdir ./bin/dist && rm -r ./bin/modules/ && mkdir ./bin/modules",
+    
+    "doc":        "yarn documentation build ./src/ -f html -o ./docs/",
+    "clean-doc":  "rm -r ./docs/ && mkdir ./docs && yarn doc && open-doc",
+    "open-doc":   "open ./docs/index.html",
+
+    "watch":  "yarn webpack --watch"
+  },
+  "author": "Chun Fung Kwok",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
+    "babel-jest": "^26.0.1",
+    "documentation": "^13.0.2",
+    "jest": "^26.0.1",
+    "vue": "^2.6.11",
+    "vue-loader": "^15.9.3",
+    "vue-template-compiler": "^2.6.11",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11"
+  },
+  "dependencies": {
+    "dataframe-js": "^1.4.3",
+    "mathjs": "^7.0.0",
+    "ramda": "^0.27.0"
+  }
+}
