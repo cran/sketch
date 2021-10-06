@@ -10,6 +10,9 @@
 #' @param ... (Optional) Other attributes to pass to iframes. Also supports
 #' the `rules`, `deparsers` and `debug` options to pass to `source_r`.
 #'
+#' @return An HTML string if \code{render} is TRUE, or a 'shiny.tag' object
+#' if \code{render} is FALSE.
+#'
 #' @examples
 #' # In an R code chunk of an R Markdown document
 #' file <- system.file("test_files/test_RMD.R", package = "sketch")
@@ -20,16 +23,22 @@ insert_sketch <- function(file, id, output_dir = NULL, render = TRUE, ...) {
     opt_args <- capture_args(list(...), c("rules", "deparsers", "debug", "asset_tags"))
     html_file <- do_call(source_r, file = file, launch_browser = NULL,
                          extended_args = opt_args$keep)
+    if (!"style" %in% names(opt_args$left)) {
+        opt_args$left$style <- "border: none;"
+    }
+    # Render the app
     if (is.null(output_dir)) {
+        # Embed the app
         file_str <- paste(readLines(html_file), collapse = "\n")
         res <- do_call(
           htmltools::tags$iframe,
-          srcdoc = file_str, style="border: none;",
+          srcdoc = file_str,
           extended_args = opt_args$left
         )
         if (render) return(htmltools::doRenderTags(res))
         return(res)
     } else {
+        # Reference to output files
         temp_dir <- output_dir
         if (!dir.exists(temp_dir)) {
             stop(glue::glue("The output directory '{output_dir}' does not exist."))
@@ -39,7 +48,7 @@ insert_sketch <- function(file, id, output_dir = NULL, render = TRUE, ...) {
         file.copy(html_file, temp_file, overwrite = FALSE)
         res <- do_call(
           htmltools::tags$iframe,
-          src = temp_file, style="border: none;",
+          src = temp_file,
           extended_args = opt_args$left
         )
         if (render) return(htmltools::doRenderTags(res))
@@ -54,18 +63,21 @@ insert_sketch <- function(file, id, output_dir = NULL, render = TRUE, ...) {
 #' @param options A list of chunk options.
 #'
 #' @examples
-#' # This line makes `sketch::eng_sketch` available to `knitr::knit_engines`.
+#' # The following line makes `sketch::eng_sketch` available to `knitr::knit_engines`.
 #' # It is usually used in the 'setup' code chunk of an R Markdown document
 #' knitr::knit_engines$set(sketch = sketch::eng_sketch)
 #'
 #' @export
 eng_sketch <- function(options) {
-    out <- if (options$eval && knitr::is_html_output(excludes = 'markdown')) {
-        src_file <- tempfile()
+    out <- if (options$eval && knitr::is_html_output(excludes = options$excludes)) {
+        src_file <- tempfile()   # nocov start
         write(options$code, file = src_file)
-
-        opt_args <- capture_args(options, c("rules", "deparsers", "debug", "asset_tags", "style"))
-        do_call(insert_sketch, file = src_file, extended_args = opt_args$keep)
+        # Set default for the list of arguments that will be passed to `insert_sketch`
+        if (is.null(options$keep_args)) {
+            options$keep_args <- c("rules", "deparsers", "debug", "asset_tags", "style", "class")
+        }
+        opt_args <- capture_args(options, options$keep_args)
+        do_call(insert_sketch, file = src_file, extended_args = opt_args$keep)   # nocov end
     }
     options$results <- 'asis'
     knitr::engine_output(options, options$code, out)

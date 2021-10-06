@@ -4,12 +4,7 @@
 \alias{source_js}
 \title{Serve a compiled 'sketch' JavaScript file}
 \usage{
-source_js(
-  file,
-  debug = FALSE,
-  asset_tags = default_tags(),
-  launch_browser = "viewer"
-)
+source_js(file, debug = FALSE, asset_tags = default_tags(), launch_browser)
 }
 \arguments{
 \item{file}{A character string; path to the compiled JS file.}
@@ -23,7 +18,7 @@ containing the \code{head} and \code{body} elements, each of which is a
 list of \code{shiny.tag} object.}
 
 \item{launch_browser}{A character string; "viewer" or "browser", which
-calls `rstudioapi::viewer` and `utils::browserURL` respectively; use
+calls `rstudioapi::viewer` and `utils::browseURL` respectively; use
 NULL to suppress display.}
 }
 \description{

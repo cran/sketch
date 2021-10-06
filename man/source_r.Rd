@@ -4,13 +4,7 @@
 \alias{source_r}
 \title{Source a 'sketch' R file}
 \usage{
-source_r(
-  file,
-  debug = FALSE,
-  launch_browser = "viewer",
-  asset_tags = default_tags(),
-  ...
-)
+source_r(file, debug = FALSE, launch_browser, asset_tags = default_tags(), ...)
 }
 \arguments{
 \item{file}{A character string; path to the R file.}
@@ -18,7 +12,7 @@ source_r(
 \item{debug}{TRUE or FALSE; if TRUE, a console for debugging is attached to your app.}
 
 \item{launch_browser}{A character string; "viewer" or "browser", which
-calls `rstudioapi::viewer` and `utils::browserURL` respectively; use
+calls `rstudioapi::viewer` and `utils::browseURL` respectively; use
 NULL to suppress display.}
 
 \item{asset_tags}{An optional list of 'shiny.tag' objects to be added to the html

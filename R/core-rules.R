@@ -13,27 +13,32 @@
 #'
 #' @export
 basic_rules <- function() {
-    list(
-        make_rule("<-", "="),
-        make_rule("<<-", "="),
+    res <- list(
+        make_rule("$", "."),
+        make_rule("@", "."),
+        make_rule("::", "."),
         make_rule("^", "**"),
         make_rule("%%", "%"),
-        make_rule("$", "."),
-        make_rule("::", "."),
         make_rule("%instanceof%", "instanceof"),
         make_rule("%+%", "+"),
         make_rule("%=>%", "=>"),
+        make_rule("%>%", "pipe"),
+        make_rule("%<>%", "assignment_pipe"),
         make_rule("T", "true"),
         make_rule("F", "false"),
         make_rule("TRUE", "true"),
         make_rule("FALSE", "false"),
         make_rule("declare", "let"),
-        make_rule("self", "this"),
+        make_rule("stop", "throw"),
         make_rule("JS_NULL", "null"),
         make_rule("JS_UNDEFINED", "undefined"),
         make_rule("JS_NAN", "NaN"),
         make_rule("JS_ARRAY", "Array")
     )
+    # "." requires higher precedence in grouping because "." triggers
+    # conditional rewriting in `subst`.
+    dot_precedence <- 10 * purrr::map_lgl(res, ~attr(.x, "to") == ".")
+    combine_rules(res, dot_precedence)
 }
 
 
@@ -44,12 +49,13 @@ basic_rules <- function() {
 #'
 #' @export
 default_rules <- function() {
-    list(
+    # The list of rules is separated into two parts because the transpilation
+    # involving "." is conditional, hence it needs to be done first.
+    res <- list(
         # Binary operators
-        make_rule("<-", "="),
-        make_rule("<<-", "="),
         make_rule("::", "."),
         make_rule("$",  "."),
+        make_rule("@", "."),
         make_rule("+",  "R.add"),
         make_rule("-",  "R.subtract"),
         make_rule("*",  "R.multiply"),
@@ -75,19 +81,20 @@ default_rules <- function() {
         make_rule("%=>%", "=>"),
         make_rule("%+%", "+"),
         make_rule("%-%", "-"),
-        make_rule("%/%", "intDivide"),
+        make_rule("%/%", "R.intDivide"),
         make_rule("%o%", "R.compose"),
-        make_rule("%>%", "R.pipe"),
+        make_rule("%>%", "pipe"),
+        make_rule("%<>%", "assignment_pipe"),
 
-        # Base Javascript
+        # Base Javascript ----
         make_rule("TRUE", "true"),
         make_rule("T", "true"),
         make_rule("FALSE", "false"),
         make_rule("F", "false"),
         make_rule("declare", "let"),
-        make_rule("self", "this"),
+        make_rule("stop", "throw"),
 
-        # Basic R functions
+        # Basic R functions ----
         make_rule(    "pi", "R.pi"),
         make_rule(   "seq", "R.seq"),
         make_rule( "print", "R.print"),
@@ -97,7 +104,7 @@ default_rules <- function() {
         make_rule("typeof", "R.typeof"),
         make_rule("which", "R.which"),
 
-        # Data structure
+        # Data structure ----
         make_rule("c", "R.c"),
         make_rule("rep", "R.rep"),
         make_rule("matrix", "R.matrix2"),
@@ -116,7 +123,7 @@ default_rules <- function() {
         make_rule("rbind", "R.rbind"),
         make_rule("colnames", "R.colnames"),
 
-        # High order functions
+        # High order functions ----
         make_rule(   "map",  "R.map"),
         make_rule(  "map2",  "R.map2"),
         make_rule(  "pmap",  "R.pmap"),
@@ -124,7 +131,7 @@ default_rules <- function() {
         make_rule("reduce_right", "R.reduce_right"),
         make_rule("compose", "R.compose"),
 
-        # Optimisation
+        # Optimisation ----
         make_rule("uniroot", "R.uniroot"),
 
         # Set functions
@@ -136,8 +143,9 @@ default_rules <- function() {
         make_rule("is.element", "R.is_element"),
         make_rule("is.subset", "R.is_subset"),   # not in R
         make_rule("setsymdiff", "R.setsymdiff"), # not in R
+        make_rule("table", "R.table"),
 
-        # Statistics functions
+        # Statistics functions ----
         make_rule("mean", "R.mean"),
         make_rule("median", "R.median"),
         make_rule("sd", "R.sd"),
@@ -162,7 +170,7 @@ default_rules <- function() {
         make_rule( "log10", "R.log10"),
         make_rule( "log2", "R.log2"),
 
-        # Trigonometric functions
+        # Trigonometric functions ----
         make_rule( "cos", "R.cos"),
         make_rule( "sin", "R.sin"),
         make_rule( "tan", "R.tan"),
@@ -193,13 +201,13 @@ default_rules <- function() {
         make_rule("acsch", "R.acsch"),
         make_rule("asech", "R.asech"),
 
-        # Special functions
+        # Special functions ----
         make_rule("erf", "R.erf"),
         make_rule("gamma",    "R.gamma"),
         make_rule("lgamma",   "R.lgamma"),
         make_rule("digamma",  "R.digamma"),
         make_rule("trigamma", "R.trigamma"),
-        # Todo: beta, lbeta, psigamma
+        # TODO: beta, lbeta, psigamma
         make_rule("choose", "R.choose"),
         make_rule("lchoose", "R.lchoose"),
         make_rule("factorial", "R.factorial"),
@@ -235,10 +243,12 @@ default_rules <- function() {
         make_rule("JS_NAN", "NaN"),
         make_rule("JS_ARRAY", "Array"),
 
-        # jQuery ----
+        # Special symbol for jQuery, Lodash and Underscore.js ----
         make_rule("jQuery", "$"),
+        make_rule("Lodash", "_"),
+        make_rule("Underscore", "_"),
 
-        # Distributions functions
+        # Distributions functions ----
         # make_rule("discrete_inverse", "R.discrete_inverse"),
         make_rule("dbinom", "R.dbinom"),
         make_rule("pbinom", "R.pbinom"),
@@ -277,4 +287,6 @@ default_rules <- function() {
         make_rule("qunif", "R.qunif"),
         make_rule("runif", "R.runif")
     )
+    dot_precedence <- 10 * purrr::map_lgl(res, ~attr(.x, "to") == ".")
+    combine_rules(res, dot_precedence)
 }

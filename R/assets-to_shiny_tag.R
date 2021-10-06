@@ -2,7 +2,7 @@
 #' @param x A character string; the header line (without the prefix #!).
 #' @param processors A list of handlers for processing the '#!' header.
 #' @return A 'shiny.tag' object.
-# convert_src :: char -> [header_processor] -> char
+# convert_src :: char -> [header_processor] -> shiny.tag
 # where header_processor := (predicate, process)
 convert_src <- function(x, processors = default_processors()) {
     for (processor in processors) {
@@ -21,7 +21,7 @@ make_processor <- function(pred, fun) {
     list(predicate = pred, process = fun)
 }
 
-#' List of handlers for processing the '#!' header
+#' A list of handlers for processing the '#!' header
 #' @note This is used as input to \link{assets}.
 #' @examples
 #' default_processors()
@@ -31,37 +31,44 @@ default_processors <- function() {
         make_processor(load_library_pred, load_library_proc),
         make_processor(load_script_pred, load_script_proc),
         make_processor(load_data_pred, load_data_proc),
+        make_processor(config_pred, ignore_proc),
         make_processor(always_true, load_error_proc)
     )
 }
 
 #=====================================================================
-# load_library_pred :: char -> logical
-load_library_pred <- function(x) {
-    ast <- rlang::parse_expr(x)
-    rlang::is_call(ast, "load_library")
+# is_call_pred :: char -> (char -> logical)
+is_call_pred <- function(name) {
+    function(x) {
+        is_call(parse_expr(x), name = name)
+    }
 }
+
+eval_expr <- function(x) eval(parse_expr(x))
+
+# load_library_pred :: char -> logical
+load_library_pred <- is_call_pred("load_library")
 # load_library_proc :: char -> shiny.tag
-# Delegate to `load_library`
-load_library_proc <- purrr::compose(eval, rlang::parse_expr)
+load_library_proc <- eval_expr  # Delegate to `load_library`
+
 
 # load_script_pred :: char -> logical
-load_script_pred <- function(x) {
-    ast <- rlang::parse_expr(x)
-    rlang::is_call(ast, "load_script")
-}
+load_script_pred <- is_call_pred("load_script")
 # load_script_proc :: char -> shiny.tag
-# Delegate to `load_script`
-load_script_proc <- purrr::compose(eval, rlang::parse_expr)
+load_script_proc <- eval_expr  # Delegate to `load_script`
+
 
 # load_data_pred :: char -> logical
-load_data_pred <- function(x) {
-    ast <- rlang::parse_expr(x)
-    rlang::is_call(ast, "load_data")
-}
+load_data_pred <- is_call_pred("load_data")
 # load_data_proc :: char -> shiny.tag
-# Delegate to `load_data`
-load_data_proc <- purrr::compose(eval, rlang::parse_expr)
+load_data_proc <- eval_expr  # Delegate to `load_data`
+
+
+# config_pred :: char -> logical
+config_pred <- is_call_pred("config")
+# config_proc :: char -> NULL
+ignore_proc <- function(x) NULL  # This is handled by extra-config.R
+
 
 # Load error messages
 # load_error_proc :: char -> IO()
@@ -72,20 +79,31 @@ load_error_proc <- function(x) {
 
 
 #' Header functions
-#' @rdname empty-headers
+#' @name load_Family
+#' @rdname header-functions
 #' @param package A character string; name of a JavaScript library.
 #' @param src A character string; the full web/local path to a JavaScript library.
 #' @param x A character string; the full path to the file containing the data.
 #' @param cache A character string; the full path to the cache file.
 #' @param ... Additional arguments to pass to header processor.
 # load_library :: char -> ... -> shiny.tag
-load_library <- function(package, ...) load_script(src(package), ...)
+load_library <- function(package, ...) {
+    load_script(src(package), ...)
+}
 
-#' @rdname empty-headers
+#' @rdname header-functions
 # load_script :: char -> ... -> shiny.tag
-load_script <- function(src, ...) to_shiny_tag(src = src, ...)
+load_script <- function(src, ...) {
+    if (dir.exists(src)) {
+        files <- list.files(src, pattern = "[.](r|(js))$", full.names = TRUE,
+                            recursive = TRUE, ignore.case = TRUE)
+        res <- purrr::map(files, ~to_shiny_tag(.x, ...))
+        return(res)
+    }
+    to_shiny_tag(src = src, ...)
+}
 
-#' @rdname empty-headers
+#' @rdname header-functions
 load_data <- function(x, cache = tempfile(), ...) {
     index_js <- compile_data(x, cache, ...)
     script(src = dataURI(file = index_js, mime = "text/javascript"))
@@ -102,7 +120,7 @@ load_data <- function(x, cache = tempfile(), ...) {
 #' @keywords internal
 # to_shiny_tag :: char -> ... -> shiny.tag
 to_shiny_tag <- function(src, ...) {
-    # JS, CSS: local or web,  R, CSV: local only.
+    # JS, CSS: local or web;  R, CSV: local only.
     # web links are kept as-is; local are turned into URI (except CSS is kept in-line).
     if (is_web_link(src)) {
         if (is_javascript(src)) return(load_web_js(src, ...))
